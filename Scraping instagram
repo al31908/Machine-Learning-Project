@@ -1,0 +1,37 @@
+import csv, instaloader
+import time
+
+
+class Instagram_reels():
+    def __init__(self): #costruttore
+        self.instagram= instaloader.Instaloader() #istanza di instaloader
+
+
+
+    def get_reels_info(self, username):
+        with open(username + ".csv", "w", newline="", encoding="utf-8") as file:
+            writer = csv.writer(file)#
+            writer.writerow(["mediaId", "data", "durata", "visualizzazioni", "likes", "commenti"])
+        self.instagram.login('xxxx', 'xxxx')
+        i = 0#tengo traccia delle righe
+        posts= instaloader.Profile.from_username(self.instagram.context,username).get_posts()
+        for post in filter(lambda p: p.is_video, posts):
+            try:
+                time.sleep(40)
+                if i <= 400:
+                    print(i, post.date, post.mediaid, post.is_video)
+                    if post.is_video :
+                        phone_post = post._iphone_struct
+                        with open(username + ".csv", "a", newline="", encoding="utf-8") as file:
+                            writer = csv.writer(file)
+                            writer.writerow([post.mediaid, post.date, post.video_duration, phone_post['play_count'], post.likes, post.comments])
+                        print(i,post.date,post.mediaid, post.is_video)
+                        i=i+1
+                else:
+                    break
+            except:
+                continue
+
+if __name__== "__main__":
+    instagram=Instagram_reels()
+    instagram.get_reels_info("montana_colors")
