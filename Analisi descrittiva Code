@@ -1,0 +1,123 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+class Analisi():
+    def __init__(self,df):
+        self.df= df
+
+    def trasformazione_creazione_feature(self):
+
+        self.df['rapporto_likes'] = self.df['likes'] / self.df['visualizzazioni']
+        self.df['rapporto_comm'] = self.df['commenti'] / self.df['visualizzazioni']
+
+
+        self.df["data"]=pd.to_datetime(self.df["data"])
+        self.df["data"]=pd.to_datetime(self.df["data"]).dt.to_period("M").dt.to_timestamp()
+        #print(self.df)
+
+    def visualizzazioni_data(self):
+        #plot view
+        df_v=self.df.groupby(["data"])["visualizzazioni"].agg("sum").reset_index()
+        df_v=df_v.sort_values(by=["data"])
+        ax_v = df_v.plot(x="data", y="visualizzazioni")
+        #print(df_v)
+        ax_v.axvline(pd.to_datetime('2022-03'), color='green', linestyle='--', label='Marzo 2022')
+        ax_v.axvline(pd.to_datetime('2023-03'), color='red', linestyle='--', label='Marzo 2023')
+        ax_v.axvline(pd.to_datetime('2023-06'), color='blue', linestyle='--', label='Giugno 2023')
+        ax_v.legend()
+
+
+
+    def likes_data(self):
+        df_v = self.df.groupby(["data"])["likes"].agg("sum").reset_index()
+        df_v = df_v.sort_values(by=["data"])
+        df_v.plot(x="data", y="likes")
+
+    def commenti_data(self):
+        df_v = self.df.groupby(["data"])["commenti"].agg("sum").reset_index()
+        df_v = df_v.sort_values(by=["data"])
+        df_v.plot(x="data", y="commenti")
+
+    def rapporto_commenti_data(self):
+        df_v = self.df.groupby(["data"])["rapporto_comm"].agg("sum").reset_index()
+        df_v = df_v.sort_values(by=["data"])
+        df_v.plot(x="data", y="rapporto_comm")
+
+    def rapporto_likes_data(self):
+        df_v = self.df.groupby(["data"])["rapporto_likes"].agg("sum").reset_index()
+        df_v = df_v.sort_values(by=["data"])
+        df_v.plot(x="data", y="rapporto_likes")
+
+    def durata_video(self):
+        print(self.df["durata"].min())
+        print(self.df["durata"].mean())
+        print(self.df["durata"].max())
+        #creo quantili
+        q2 =self.df["durata"].quantile(0.2)
+        q5 =self.df["durata"].quantile(0.5)
+        q8 =self.df["durata"].quantile(0.8)
+        #4 classi cat sui quantili
+        self.df["d_cat"]=np.where(self.df["durata"] <= q2, "basso",
+                             np.where((self.df["durata"] > q2 ) & (self.df["durata"] <= q5), "medio-basso",
+                                                                 np.where((self.df["durata"] > q5 ) & (self.df["durata"] <= q8), "medio-alto", "alto")))
+
+        range_per_classe = self.df.groupby("d_cat")["durata"].agg(["min", "max"])
+        print(range_per_classe)
+        # count su d_cat
+        self.df.groupby(["d_cat"]).size().plot(kind="pie", y="d_cat",autopct='%1.0f%%', pctdistance=0.60, labeldistance=1.2)
+        plt.title("Distribuzione delle categorie")
+
+
+
+
+
+
+
+
+
+
+
+
+    def rel_varibili(self):
+        #sum sulle colone
+        df_2= self.df.groupby(["data"])[["visualizzazioni", "likes", "commenti"]].agg("sum").reset_index()
+        #print(df_2)
+        #eseguo il log sulla sum
+        df_2["visualizzazioni"]= np.log2(df_2["visualizzazioni"])
+        df_2["likes"]= np.log2(df_2["likes"])
+        df_2["commenti"]= np.log2(df_2["commenti"])
+
+        #plot sulla data
+        df_2.plot(x = "data", y= ["visualizzazioni", "likes", "commenti"])
+        #plt.show()
+
+    def count_video_date(self):
+        df_3 = self.df.groupby(["data"]).size().reset_index(name="count")
+        ax = df_3.plot(x="data", y="count")
+        ax.axvline(pd.to_datetime('2022-03'), color='green', linestyle='--', label='Marzo 2022')
+        ax.axvline(pd.to_datetime('2023-03'), color='red', linestyle='--', label='Marzo 2023')
+        ax.axvline(pd.to_datetime('2023-06'), color='blue', linestyle='--', label='Giugno 2023')
+        ax.legend()
+
+
+        #plt.show()
+        # num.video pub
+        #df_3= self.df.groupby(["data"]).size().reset_index(name="count")
+        #df_3.plot(x = "data", y= "count")
+
+
+if __name__== "__main__":
+    df = pd.read_csv("dataset.csv")
+    a_descrittiva= Analisi(df)
+    a_descrittiva.trasformazione_creazione_feature()
+    #a_descrittiva.visualizzazioni_data()
+    #a_descrittiva.likes_data()
+    a_descrittiva.durata_video()
+    #a_descrittiva.rel_varibili()
+    #a_descrittiva.commenti_data()
+    #a_descrittiva.count_video_date()
+    #a_descrittiva.rapporto_likes_data()
+    #a_descrittiva.rapporto_commenti_data()
+    plt.show()
