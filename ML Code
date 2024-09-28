@@ -1,0 +1,169 @@
+import pandas as pd
+import datetime as dt
+import numpy as np
+from numpy import mean
+from numpy import std
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RepeatedKFold
+from sklearn import tree
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error,mean_squared_error,r2_score
+from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.svm import SVR
+from sklearn.model_selection import cross_val_score
+
+
+class ML:
+    def __init__(self):
+        self.df = None
+        self.model = None #modello che apprende dall algo
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
+        self.X = None
+        self.y = None
+    def load_df(self, name):
+        self.df = pd.read_csv(name)
+
+    def transformation(self):
+        self.df["data"]= pd.to_datetime(self.df["data"])
+        #self.df["data"]= self.df["data"].map(dt.datetime.toordinal)
+        self.df['data'] = (dt.datetime.now() - self.df['data']).dt.days
+
+        self.df['rapporto_likes'] = self.df['likes'] / self.df['visualizzazioni']
+        self.df['rapporto_comm'] = self.df['commenti'] / self.df['visualizzazioni']
+
+    def create_sets(self, x_features, y_features):#due array: y= rapporto, x = tutto il resto
+        self.X = self.df[x_features]
+        self.y = self.df[y_features]
+        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+        self.X, self.y, test_size = 0.25, random_state = 42)
+
+    def model_create(self,model_type):
+        if (model_type =="RandomForest"):
+            self.model = RandomForestRegressor()
+        elif (model_type == "DecisionTree"):
+            self.model = tree.DecisionTreeRegressor(random_state=1, max_depth=20)
+        elif (model_type== "AdaBoostRegressor"):
+            self.model = AdaBoostRegressor(random_state=0, n_estimators=100)
+        elif (model_type== "GradientBoostingRegressor"):
+            self.model = GradientBoostingRegressor(random_state=0)
+        elif (model_type =="SVR"):
+            self.model = SVR(C=1.0, epsilon=0.2)
+        self.model.fit(self.X_train, self.y_train)
+        #if (model_type == "DecisionTree"):
+             #tree.plot_tree(self.model)
+             #plt.show()
+
+
+
+    def model_evaluation(self,model_evaluation):
+        if model_evaluation == "cross_val":
+            cv = RepeatedKFold(n_splits=5, n_repeats=3,random_state=1) #scelgo 5 per avvicinarmi alle proporzioni orignali
+            # evaluate the model
+            n_scores_r2 = cross_val_score(self.model, self.X, self.y, scoring='r2', cv=cv, n_jobs=-1)
+            n_scores_mae = cross_val_score(self.model, self.X, self.y, scoring='neg_mean_absolute_error', cv=cv, n_jobs=-1)
+            n_scores_mse = cross_val_score(self.model, self.X, self.y, scoring='neg_mean_squared_error', cv=cv,n_jobs=-1)
+            n_scores_rmse = cross_val_score(self.model, self.X, self.y, scoring='neg_root_mean_squared_error', cv=cv, n_jobs=-1)
+
+            print('R2: %.5f (%.5f)' % (mean(n_scores_r2), std(n_scores_r2)))
+            print('NMAE: %.5f (%.5f)' % (mean(n_scores_mae), std(n_scores_mae)))
+            print('NMSE: %.5f (%.5f)' % (mean(n_scores_mse), std(n_scores_mse)))
+            print('RMSE: %.5f (%.5f)' % (mean(n_scores_rmse), std(n_scores_rmse)))
+
+        else:
+            predictions = self.model.predict(self.X_test)  #predice a partire da xtest tutte le predictions
+            # print(predictions)
+            print("R2: ", r2_score(self.y_test, predictions))
+            print("MAE: ", mean_absolute_error(self.y_test, predictions))
+            print("MSE: ", mean_squared_error(self.y_test, predictions))
+
+
+            new_p = []
+            for p in predictions:
+                new_p.append(float(p))
+            print(new_p)
+            print(self.y_test.values.tolist())
+
+
+if __name__== "__main__":
+    ml = ML()
+    ml.load_df("dataset.csv")
+    ml.transformation()
+    print("DecisionTree")
+    print("predizione RAPPORTO LIKES:" )
+    ml.create_sets(["data","rapporto_comm","visualizzazioni","durata"],"rapporto_likes")
+    ml.model_create("DecisionTree")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+    print("DecisionTree")
+    print("predizione RAPPORTO COMMENTI:")
+    ml.create_sets(["data", "rapporto_likes", "visualizzazioni", "durata"], "rapporto_comm")
+    ml.model_create("DecisionTree")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+
+    print("RandomForest")
+    print("predizione RAPPORTO LIKES:")
+    ml.create_sets(["data", "rapporto_comm", "visualizzazioni", "durata"], "rapporto_likes")
+    ml.model_create("RandomForest")
+    ml.model_evaluation("cross_val")
+    # ml.model_evaluation("standard")
+    print("RandomForest")
+    print("predizione RAPPORTO COMMENTI:")
+    ml.create_sets(["data", "rapporto_likes", "visualizzazioni", "durata"], "rapporto_comm")
+    ml.model_create("RandomForest")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+
+    print("AdaBoostRegressor")
+    print("predizione RAPPORTO LIKES:")
+    ml.create_sets(["data", "rapporto_comm", "visualizzazioni", "durata"], "rapporto_likes")
+    ml.model_create("AdaBoostRegressor")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+    print("AdaBoostRegressor")
+    print("predizione RAPPORTO COMMENTI:")
+    ml.create_sets(["data", "rapporto_likes", "visualizzazioni", "durata"], "rapporto_comm")
+    ml.model_create("AdaBoostRegressor")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+
+    print("GradientBoostingRegressor")
+    print("predizione RAPPORTO LIKES:")
+    ml.create_sets(["data", "rapporto_comm", "visualizzazioni", "durata"], "rapporto_likes")
+    ml.model_create("GradientBoostingRegressor")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+    print("GradientBoostingRegressor")
+    print("predizione RAPPORTO COMMENTI:")
+    ml.create_sets(["data", "rapporto_likes", "visualizzazioni", "durata"], "rapporto_comm")
+    ml.model_create("GradientBoostingRegressor")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+
+    print("SVR")
+    print("predizione RAPPORTO LIKES:")
+    ml.create_sets(["data", "rapporto_comm", "visualizzazioni", "durata"], "rapporto_likes")
+    ml.model_create("SVR")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+    print("SVR")
+    print("predizione RAPPORTO COMMENTI:")
+    ml.create_sets(["data", "rapporto_likes", "visualizzazioni", "durata"], "rapporto_comm")
+    ml.model_create("SVR")
+    ml.model_evaluation("cross_val")
+    #ml.model_evaluation("standard")
+
+    
+    #print(ml.y_test)
+    #print(ml.X_train)
+    #print(ml.X_test)
+    #print(ml.y_train)
+    #print(ml.y_test)
+
+
+
